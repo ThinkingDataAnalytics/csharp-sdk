@@ -1,8 +1,23 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+
+///
+/// \mainpage
+/// # ThinkingData SDK for C# server
+/// 
+/// <img src="https://user-images.githubusercontent.com/53337625/205621683-ed9b97ef-6a52-4903-a2c0-a955dddebb7d.png" alt="logo" width="50%"/>
+/// 
+/// This is the[ThinkingData](https://www.thinkingdata.cn)™ SDK for C-Shap. Documentation is available on our help center in the following languages:
+/// 
+/// - [English](https://docs.thinkingdata.cn/ta-manual/latest/en/installation/installation_menu/server_sdk/csharp_sdk_installation/csharp_sdk_installation.html)
+/// - [中文](https://docs.thinkingdata.cn/ta-manual/latest/installation/installation_menu/server_sdk/cshap_sdk_installation/cshap_sdk_installation.html)
+/// - [日本語](https://docs.thinkingdata.cn/ta-manual/latest/ja/installation/installation_menu/server_sdk/csharp_sdk_installation/csharp_sdk_installation.html)
+/// 
+/// ---
+
 
 
 namespace ThinkingData.Analytics
@@ -11,33 +26,36 @@ namespace ThinkingData.Analytics
     /// <summary>
     /// dynamic common properties interface
     /// </summary>
-    public interface IDynamicPublicProperties
+    public interface ITDDynamicPublicProperties
     {
         Dictionary<string, object> GetDynamicPublicProperties();
     }
 
-    public class ThinkingdataAnalytics
+    /// <summary>
+    /// Entry of SDK
+    /// </summary>
+    public class TDAnalytics
     {
-        public const string LibVersion = "1.5.2";
+        public const string LibVersion = "2.0.0";
         public const string LibName = "tga_csharp_sdk";
 
         private static readonly Regex KeyPattern =
             new Regex("^(#[a-z][a-z0-9_]{0,49})|([a-z][a-z0-9_]{0,50})$", RegexOptions.IgnoreCase);
 
-        private readonly IConsumer _consumer;
+        private readonly ITDConsumer _consumer;
 
         private readonly bool _enableUuid;
 
         private readonly Dictionary<string, object> _pubicProperties;
 
-        private IDynamicPublicProperties _dynamicPublicProperties;
+        private ITDDynamicPublicProperties _dynamicPublicProperties;
 
 
         /// <summary>
         /// init SDK with consumer
         /// </summary>
         /// <param name="consumer">data consumer</param>
-        public ThinkingdataAnalytics(IConsumer consumer) : this(consumer, false)
+        public TDAnalytics(ITDConsumer consumer) : this(consumer, false)
         {
         }
 
@@ -46,8 +64,9 @@ namespace ThinkingData.Analytics
         /// </summary>
         /// <param name="consumer">data consumer</param>
         /// <param name="enableUuid">enable uuid</param>
-        public ThinkingdataAnalytics(IConsumer consumer, bool enableUuid)
+        public TDAnalytics(ITDConsumer consumer, bool enableUuid)
         {
+            TDLog.Log("Init SDK");
             _consumer = consumer;
             _enableUuid = enableUuid;
             _pubicProperties = new Dictionary<string, object>();
@@ -85,8 +104,8 @@ namespace ThinkingData.Analytics
         /// <summary>
         /// set dynamic public properties
         /// </summary>
-        /// <param name="dynamicPublicProperties">object which implements IDynamicPublicProperties</param>
-        public void SetDynamicPublicProperties(IDynamicPublicProperties dynamicPublicProperties)
+        /// <param name="dynamicPublicProperties">object which implements ITDDynamicPublicProperties</param>
+        public void SetDynamicPublicProperties(ITDDynamicPublicProperties dynamicPublicProperties)
         {
             _dynamicPublicProperties = dynamicPublicProperties;
         }
@@ -300,6 +319,7 @@ namespace ThinkingData.Analytics
         /// </summary>
         public void Flush()
         {
+            TDLog.Log("SDK flush data.");
             _consumer.Flush();
         }
 
@@ -309,6 +329,7 @@ namespace ThinkingData.Analytics
         public void Close()
         {
             _consumer.Close();
+            TDLog.Log("SDK close.");
         }
 
         private static bool IsNumber(object value)
@@ -485,24 +506,29 @@ namespace ThinkingData.Analytics
         }
     }
 
-    public class TALogger
+    /// <summary>
+    /// [Deprecated] Please use ITDDynamicPublicProperties
+    /// </summary>
+    [Obsolete("Please use ITDDynamicPublicProperties", false)]
+    public interface IDynamicPublicProperties : ITDDynamicPublicProperties
     {
-        public static bool Enable { get; set; }
-
-        public static void Log(string format, params object[] args)
-        {
-            if (Enable)
-            {
-                string prefix = string.Format("[TA][{0}]: ", (DateTime.Now).ToString("yyyy-MM-dd HH:mm:ss"));
-                if (args != null)
-                {
-                    Console.WriteLine(prefix + format, args);
-                }
-                else
-                {
-                    Console.WriteLine(prefix + format, null, null);
-                }
-            }
-        }
+        
     }
+
+    /// <summary>
+    /// [Deprecated] Please use TDAnalytics
+    /// </summary>
+    [Obsolete("Please use TDAnalytics", false)]
+    public class ThinkingdataAnalytics : TDAnalytics
+    {
+        public ThinkingdataAnalytics(ITDConsumer consumer) : base(consumer) { }
+        public ThinkingdataAnalytics(ITDConsumer consumer, bool enableUuid) : base(consumer, enableUuid) { }
+    }
+
+    /// <summary>
+    /// [Deprecated] Please use TDLog
+    /// </summary>
+    [Obsolete("Please use TDLog", false)]
+    public class TALogger : TDLog { }
+
 }

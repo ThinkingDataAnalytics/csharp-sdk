@@ -13,7 +13,10 @@ using System.Net.Http;
 
 namespace ThinkingData.Analytics
 {
-    public interface IConsumer
+    /// <summary>
+    /// Consumer interface
+    /// </summary>
+    public interface ITDConsumer
     {
         void Send(Dictionary<string, object> message);
 
@@ -28,14 +31,17 @@ namespace ThinkingData.Analytics
         bool IsStrict();
     }
 
-    public class LoggerConsumer : IConsumer
+    /// <summary>
+    /// Write data to file
+    /// </summary>
+    public class TDLoggerConsumer : ITDConsumer
     {
-        private const string DefaultFileNamePrefix = "log";
-        private const int DefaultBufferSize = 8192;
-        private const int DefaultBatchSec = 10;
-        private const int DefaultFileSize = -1;
-        private const RotateMode DefaultRotateMode = RotateMode.DAILY;
-        private const bool DefaultAsync = false;
+        protected const string DefaultFileNamePrefix = "log";
+        protected const int DefaultBufferSize = 8192;
+        protected const int DefaultBatchSec = 10;
+        protected const int DefaultFileSize = -1;
+        protected const RotateMode DefaultRotateMode = RotateMode.DAILY;
+        protected const bool DefaultAsync = false;
 
         private readonly IsoDateTimeConverter _timeConverter = new IsoDateTimeConverter
         {
@@ -55,6 +61,9 @@ namespace ThinkingData.Analytics
         private readonly StringBuilder _messageBuffer;
         private InnerLoggerFileWriter _fileWriter;
 
+        /// <summary>
+        /// log file rotate type
+        /// </summary>
         public enum RotateMode
         {
             /// <summary>
@@ -68,45 +77,30 @@ namespace ThinkingData.Analytics
             HOURLY
         }
 
-
-        public LoggerConsumer(string logDirectory) : this(logDirectory, DefaultRotateMode, DefaultFileSize,
+        /// <summary>
+        /// init log consumer
+        /// </summary>
+        /// <param name="logDirectory">log file path</param>
+        public TDLoggerConsumer(string logDirectory) : this(logDirectory, DefaultRotateMode, DefaultFileSize,
             DefaultFileNamePrefix, DefaultBufferSize, DefaultBatchSec, DefaultAsync)
         {
         }
 
-        public LoggerConsumer(string logDirectory, int bufferSize, int batchSec) : this(logDirectory, DefaultRotateMode,
-            DefaultFileSize, DefaultFileNamePrefix, bufferSize, batchSec, DefaultAsync)
-        {
-        }
-
-        public LoggerConsumer(string logDirectory, bool async) : this(logDirectory, DefaultRotateMode, DefaultFileSize,
-            DefaultFileNamePrefix, DefaultBufferSize, DefaultBatchSec, async)
-        {
-        }
-
-        public LoggerConsumer(string logDirectory, LogConfig config) : this(logDirectory, config.RotateMode,
+        /// <summary>
+        /// init log consumer
+        /// </summary>
+        /// <param name="logDirectory">log file path</param>
+        /// <param name="config">config</param>
+        public TDLoggerConsumer(string logDirectory, TDConfig config) : this(logDirectory, config.RotateMode,
             config.FileSize, config.FileNamePrefix, config.BufferSize, config.BatchSec, config.Async)
         {
         }
 
-        public LoggerConsumer(string logDirectory, int fileSize) : this(logDirectory, DefaultRotateMode, fileSize,
-            DefaultFileNamePrefix, DefaultBufferSize, DefaultBatchSec, DefaultAsync)
-        {
-        }
-
-        public LoggerConsumer(string logDirectory, string fileNamePrefix) : this(logDirectory, DefaultRotateMode,
-            DefaultFileSize, fileNamePrefix, DefaultBufferSize, DefaultBatchSec, DefaultAsync)
-        {
-        }
-
-        public LoggerConsumer(string logDirectory, RotateMode rotateHourly) : this(logDirectory, rotateHourly,
-            DefaultFileSize, DefaultFileNamePrefix, DefaultBufferSize, DefaultBatchSec, DefaultAsync)
-        {
-        }
-
-        public LoggerConsumer(string logDirectory, RotateMode rotateHourly, int fileSize, string fileNamePrefix,
+        protected TDLoggerConsumer(string logDirectory, RotateMode rotateHourly, int fileSize, string fileNamePrefix,
             int bufferSize, int batchSec, bool async)
         {
+            TDLog.Log("Init consumer. Mode: TDLoggerConsumer, LogDirectory: {0}", logDirectory);
+
             _logDirectory = logDirectory + "/";
             if (!Directory.Exists(_logDirectory))
             {
@@ -154,7 +148,7 @@ namespace ThinkingData.Analytics
                     string jsonStr = JsonConvert.SerializeObject(message, _timeConverter);
                     _messageBuffer.Append(jsonStr);
                     _messageBuffer.Append("\r\n");
-                    TALogger.Log("add to buffer: \n{0}", jsonStr);
+                    TDLog.Log("Enqueue to buffer: {0}", jsonStr);
                 }
                 catch (Exception e)
                 {
@@ -177,7 +171,7 @@ namespace ThinkingData.Analytics
                     return;
                 }
 
-                TALogger.Log("write to file");
+                TDLog.Log("Write to file, string.length = {0}", _messageBuffer.Length);
 
                 var fileName = GetFileName();
 
@@ -238,7 +232,10 @@ namespace ThinkingData.Analytics
             return false;
         }
 
-        public class LogConfig
+        /// <summary>
+        /// TDLoggerConsumer's config
+        /// </summary>
+        public class TDConfig
         {
             public int BufferSize { get; set; } = 50;
             public int BatchSec { get; set; } = 10;
@@ -246,6 +243,15 @@ namespace ThinkingData.Analytics
             public string FileNamePrefix { get; set; } = "log";
             public bool Async { get; set; } = true;
             public RotateMode RotateMode { get; set; } = RotateMode.DAILY;
+        }
+
+        /// <summary>
+        /// [Deprecated] Please use TDLoggerConsumer.TDConfig
+        /// </summary>
+        [Obsolete("Please use TDLoggerConsumer.TDConfig")]
+        public class LogConfig : TDConfig
+        {
+
         }
 
         private class InnerLoggerFileWriter
@@ -327,10 +333,13 @@ namespace ThinkingData.Analytics
         }
     }
 
-    public class BatchConsumer : IConsumer
+    /// <summary>
+    /// Report data by http
+    /// </summary>
+    public class TDBatchConsumer : ITDConsumer
     {
-        private const int MaxFlushBatchSize = 20;
-        private const int DefaultTimeOutSecond = 30;
+        protected const int MaxFlushBatchSize = 20;
+        protected const int DefaultTimeOutSecond = 30;
 
         private readonly List<Dictionary<string, object>> _messageList;
 
@@ -347,7 +356,12 @@ namespace ThinkingData.Analytics
         private readonly bool _compress;
         private readonly HttpClient _httpClient = new HttpClient();
 
-        public BatchConsumer(string serverUrl, string appId) : this(serverUrl, appId, MaxFlushBatchSize,
+        /// <summary>
+        /// init BatchConsumer
+        /// </summary>
+        /// <param name="serverUrl">server url</param>
+        /// <param name="appId">app id</param>
+        public TDBatchConsumer(string serverUrl, string appId) : this(serverUrl, appId, MaxFlushBatchSize,
             DefaultTimeOutSecond, false, true)
         {
         }
@@ -357,8 +371,8 @@ namespace ThinkingData.Analytics
         /// </summary>
         /// <param name="serverUrl">serverUrl</param>
         /// <param name="appId">appId</param>
-        /// <param name="compress">date compress or not</param>
-        public BatchConsumer(string serverUrl, string appId, bool compress) : this(serverUrl, appId, MaxFlushBatchSize,
+        /// <param name="compress">http compress or not</param>
+        public TDBatchConsumer(string serverUrl, string appId, bool compress) : this(serverUrl, appId, MaxFlushBatchSize,
             DefaultTimeOutSecond, false, compress)
         {
         }
@@ -369,7 +383,7 @@ namespace ThinkingData.Analytics
         /// <param name="serverUrl">serverUrl</param>
         /// <param name="appId">appId</param>
         /// <param name="batchSize">flush event count each time</param>
-        public BatchConsumer(string serverUrl, string appId, int batchSize) : this(serverUrl, appId, batchSize,
+        public TDBatchConsumer(string serverUrl, string appId, int batchSize) : this(serverUrl, appId, batchSize,
             DefaultTimeOutSecond)
         {
         }
@@ -381,12 +395,21 @@ namespace ThinkingData.Analytics
         /// <param name="appId">appId</param>
         /// <param name="batchSize">flush event count each time</param>
         /// <param name="requestTimeoutSecond">http timeout</param>
-        public BatchConsumer(string serverUrl, string appId, int batchSize, int requestTimeoutSecond) : this(serverUrl,
+        public TDBatchConsumer(string serverUrl, string appId, int batchSize, int requestTimeoutSecond) : this(serverUrl,
             appId, batchSize, requestTimeoutSecond, false)
         {
         }
 
-        public BatchConsumer(string serverUrl, string appId, int batchSize, int requestTimeoutSecond,
+        /// <summary>
+        /// init BatchConsumer
+        /// </summary>
+        /// <param name="serverUrl">server url</param>
+        /// <param name="appId">app id</param>
+        /// <param name="batchSize">flush event count each time</param>
+        /// <param name="requestTimeoutSecond">http timeout</param>
+        /// <param name="throwException">throw exception or not</param>
+        /// <param name="compress">http compress or not</param>
+        public TDBatchConsumer(string serverUrl, string appId, int batchSize, int requestTimeoutSecond,
             bool throwException, bool compress = true)
         {
             _messageList = new List<Dictionary<string, object>>();
@@ -399,10 +422,10 @@ namespace ThinkingData.Analytics
             this._requestTimeoutMillisecond = requestTimeoutSecond * 1000;
 
             _httpClient.Timeout = TimeSpan.FromMilliseconds(_requestTimeoutMillisecond);
-            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("TA-Integration-Type", ThinkingdataAnalytics.LibName);
-            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("TA-Integration-Version", ThinkingdataAnalytics.LibVersion);
+            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("TA-Integration-Type", TDAnalytics.LibName);
+            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("TA-Integration-Version", TDAnalytics.LibVersion);
             _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("user-agent", "C# SDK");
-            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("version", ThinkingdataAnalytics.LibVersion);
+            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("version", TDAnalytics.LibVersion);
             _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("appid", _appId);
             _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("compress", _compress ? "gzip" : "none");
             _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", "text/plain");
@@ -414,7 +437,7 @@ namespace ThinkingData.Analytics
             {
                 _messageList.Add(message);
                 
-                TALogger.Log("add to buffer");
+                TDLog.Log("Enqueue to buffer.");
 
                 if (_messageList.Count >= _batchSize)
                 {
@@ -469,13 +492,13 @@ namespace ThinkingData.Analytics
         {
             try
             {
-                TALogger.Log("send request:\n{0}", dataStr);
+                TDLog.Log("Send data, request: {0}", dataStr);
 
                 byte[] dataBytes = _compress ? Gzip(dataStr) : Encoding.UTF8.GetBytes(dataStr);
 
                 var response = await _httpClient.PostAsync(_url, new ByteArrayContent(dataBytes));
                 var responseString = await response.Content.ReadAsStringAsync();
-                TALogger.Log("response:\n{0}", responseString);
+                TDLog.Log("Send data, response: {0}", responseString);
 
                 var resultJson = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseString);
 
@@ -529,7 +552,7 @@ namespace ThinkingData.Analytics
             }
             catch (Exception e)
             {
-                Console.WriteLine(e + "\n  Cannot post message to " + _url);
+                TDLog.Log(e + "\n  Cannot post message to " + _url);
             }
         }
 
@@ -556,13 +579,239 @@ namespace ThinkingData.Analytics
     }
 
     /// <summary>
-    /// Function is exactly the same as BatchConsumer
+    /// The data is reported one by one, and when an error occurs, the exception will be throwed
     /// </summary>
-    public class AsyncBatchConsumer : IConsumer
+    public class TDDebugConsumer : ITDConsumer
+    {
+        private readonly string _url;
+        private readonly string _appId;
+        private readonly int _requestTimeout;
+        private readonly bool _writeData;
+        private readonly string _deviceId;
+        private readonly HttpClient _httpClient = new HttpClient();
+
+        private readonly IsoDateTimeConverter _timeConverter = new IsoDateTimeConverter
+            {DateTimeFormat = "yyyy-MM-dd HH:mm:ss.fff"};
+
+        /// <summary>
+        /// Init debug consumer
+        /// </summary>
+        /// <param name="serverUrl">server url</param>
+        /// <param name="appId">app id</param>
+        public TDDebugConsumer(string serverUrl, string appId) : this(serverUrl, appId, 30000)
+        {
+        }
+
+        /// <summary>
+        /// Init debug consumer
+        /// </summary>
+        /// <param name="serverUrl">server url</param>
+        /// <param name="appId">app id</param>
+        /// <param name="writeData">report data to TE or not</param>
+        public TDDebugConsumer(string serverUrl, string appId, bool writeData) : this(serverUrl, appId, 30000, null, writeData)
+        {
+        }
+
+        /// <summary>
+        /// Init debug consumer
+        /// </summary>
+        /// <param name="serverUrl">server url</param>
+        /// <param name="appId">app id</param>
+        /// <param name="writeData">report data to TE or not</param>
+        /// <param name="deviceId">debug device id</param>
+        public TDDebugConsumer(string serverUrl, string appId, bool writeData, string deviceId) : this(serverUrl, appId, 30000, deviceId, writeData) 
+        { 
+        }
+
+        /// <summary>
+        /// Init debug consumer
+        /// </summary>
+        /// <param name="serverUrl">server url</param>
+        /// <param name="appId">app id</param>
+        /// <param name="requestTimeout">http timeout</param>
+        /// <param name="writeData">report data to TE or not</param>
+        public TDDebugConsumer(string serverUrl, string appId, int requestTimeout, bool writeData = true): this(serverUrl, appId, requestTimeout, null, writeData)
+        {
+        }
+
+        /// <summary>
+        /// Init debug consumer
+        /// </summary>
+        /// <param name="serverUrl">server url</param>
+        /// <param name="appId">app id</param>
+        /// <param name="requestTimeout">http timeout</param>
+        /// <param name="deviceId">debug device id</param>
+        /// <param name="writeData">report data to TE or not</param>
+        public TDDebugConsumer(string serverUrl, string appId, int requestTimeout, string deviceId, bool writeData = true)
+        {
+            TDLog.Log("Init debug consumer. ServerUrl: {0}, appId: {1}, deviceID: {2}", serverUrl, appId, deviceId);
+
+            var relativeUri = new Uri("/data_debug", UriKind.Relative);
+            _url = new Uri(new Uri(serverUrl), relativeUri).AbsoluteUri;
+            this._appId = appId;
+            this._requestTimeout = requestTimeout;
+            this._writeData = writeData;
+            this._deviceId = deviceId;
+            TDLog.Enable = true;
+
+            _httpClient.Timeout = TimeSpan.FromMilliseconds(_requestTimeout);
+            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", "application/x-www-form-urlencoded");
+        }
+
+        public void Send(Dictionary<string, object> message)
+        {
+            try
+            {
+                var sendingData = JsonConvert.SerializeObject(message, _timeConverter);
+                TDLog.Log("Send data, request: {0}", sendingData);
+                SendToServer(sendingData);
+            }
+            catch (Exception exception)
+            {
+                throw new SystemException("Failed to send message with DebugConsumer.", exception);
+            }
+        }
+
+        private async void SendToServer(string dataStr)
+        {
+            try
+            {
+                List<KeyValuePair<string, string>> paramsList = new List<KeyValuePair<string, string>>() {
+                    new KeyValuePair<string, string>("appid", _appId),
+                    new KeyValuePair<string, string>("source", "server"),
+                    new KeyValuePair<string, string>("dryRun", (_writeData ? 0 : 1).ToString()),
+                    new KeyValuePair<string, string>("data", dataStr),
+                };
+
+                if (_deviceId != null)
+                {
+                    paramsList.Add(new KeyValuePair<string, string>("deviceId", _deviceId));
+                }
+
+                var response = await _httpClient.PostAsync(_url, new FormUrlEncodedContent(paramsList));
+                var responseString = await response.Content.ReadAsStringAsync();
+
+                TDLog.Log("Send data, response: {0}", responseString);
+
+                var resultJson = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseString);
+                var errorLevel = Convert.ToInt32(resultJson["errorLevel"]);
+                if (errorLevel != 0)
+                {
+                    throw new Exception("\n Can't send because :\n" + responseString);
+                }
+            }
+            catch (Exception e)
+            {
+                throw new SystemException(e + "\n Cannot post message to " + this._url);
+            }
+        }
+
+        public void Flush()
+        {
+        }
+
+        public void Close()
+        {
+        }
+
+        public bool IsStrict()
+        {
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Log module
+    /// </summary>
+    public class TDLog
+    {
+        public static bool Enable { get; set; }
+
+        public static void Log(string format, params object[] args)
+        {
+            if (Enable)
+            {
+                string prefix = string.Format("[ThinkingData][{0}] ", (DateTime.Now).ToString("yyyy-MM-dd HH:mm:ss.fff"));
+                if (args != null)
+                {
+                    Console.WriteLine(prefix + format, args);
+                }
+                else
+                {
+                    Console.WriteLine(prefix + format, null, null);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// [Deprecated] Please use ITDConsumer
+    /// </summary>
+    [Obsolete("Please use ITDConsumer", false)]
+    public interface IConsumer : ITDConsumer
+    {
+
+    }
+
+    /// <summary>
+    /// [Deprecated] Please use TDBatchConsumer
+    /// </summary>
+    [Obsolete("Please use TDBatchConsumer", false)]
+    public class BatchConsumer : TDBatchConsumer
+    {
+        public BatchConsumer(string serverUrl, string appId) : this(serverUrl, appId, MaxFlushBatchSize,
+            DefaultTimeOutSecond, false, true)
+        {
+        }
+
+        /// <summary>
+        /// init BatchConsumer
+        /// </summary>
+        /// <param name="serverUrl">serverUrl</param>
+        /// <param name="appId">appId</param>
+        /// <param name="compress">date compress or not</param>
+        public BatchConsumer(string serverUrl, string appId, bool compress) : this(serverUrl, appId, MaxFlushBatchSize,
+            DefaultTimeOutSecond, false, compress)
+        {
+        }
+
+        /// <summary>
+        /// init BatchConsumer
+        /// </summary>
+        /// <param name="serverUrl">serverUrl</param>
+        /// <param name="appId">appId</param>
+        /// <param name="batchSize">flush event count each time</param>
+        public BatchConsumer(string serverUrl, string appId, int batchSize) : this(serverUrl, appId, batchSize,
+            DefaultTimeOutSecond)
+        {
+        }
+
+        /// <summary>
+        /// init BatchConsumer
+        /// </summary>
+        /// <param name="serverUrl">serverUrl</param>
+        /// <param name="appId">appId</param>
+        /// <param name="batchSize">flush event count each time</param>
+        /// <param name="requestTimeoutSecond">http timeout</param>
+        public BatchConsumer(string serverUrl, string appId, int batchSize, int requestTimeoutSecond) : this(serverUrl,
+            appId, batchSize, requestTimeoutSecond, false)
+        {
+        }
+
+        public BatchConsumer(string serverUrl, string appId, int batchSize, int requestTimeoutSecond,
+            bool throwException, bool compress = true) : base(serverUrl, appId, batchSize, requestTimeoutSecond, throwException, compress)
+        { }
+    }
+
+    /// <summary>
+    /// [Deprecated] Please use TDBatchConsumer
+    /// </summary>
+    [Obsolete("Please use TDBatchConsumer. TDBatchConsumer is async", false)]
+    public class AsyncBatchConsumer : ITDConsumer
     {
         private const int MaxFlushBatchSize = 20;
         private const int DefaultTimeOutSecond = 30;
-        private BatchConsumer _consumer;
+        private TDBatchConsumer _consumer;
 
         public AsyncBatchConsumer(string serverUrl, string appId) : this(serverUrl, appId, MaxFlushBatchSize,
             DefaultTimeOutSecond, false, true)
@@ -606,7 +855,7 @@ namespace ThinkingData.Analytics
         public AsyncBatchConsumer(string serverUrl, string appId, int batchSize, int requestTimeoutSecond,
             bool throwException, bool compress = true)
         {
-            this._consumer = new BatchConsumer(serverUrl, appId, batchSize, requestTimeoutSecond, throwException, compress);
+            this._consumer = new TDBatchConsumer(serverUrl, appId, batchSize, requestTimeoutSecond, throwException, compress);
         }
 
         public void Send(Dictionary<string, object> message)
@@ -631,20 +880,11 @@ namespace ThinkingData.Analytics
     }
 
     /// <summary>
-    /// The data is reported one by one, and when an error occurs, the exception will be throwed
+    /// [Deprecated] Please use TDDebugConsumer
     /// </summary>
-    public class DebugConsumer : IConsumer
+    [Obsolete("Please use TDDebugConsumer", false)]
+    public class DebugConsumer : TDDebugConsumer
     {
-        private readonly string _url;
-        private readonly string _appId;
-        private readonly int _requestTimeout;
-        private readonly bool _writeData;
-        private readonly string _deviceId;
-        private readonly HttpClient _httpClient = new HttpClient();
-
-        private readonly IsoDateTimeConverter _timeConverter = new IsoDateTimeConverter
-            {DateTimeFormat = "yyyy-MM-dd HH:mm:ss.fff"};
-
         public DebugConsumer(string serverUrl, string appId) : this(serverUrl, appId, 30000)
         {
         }
@@ -653,84 +893,63 @@ namespace ThinkingData.Analytics
         {
         }
 
-        public DebugConsumer(string serverUrl, string appId, bool writeData, string deviceId) : this(serverUrl, appId, 30000, deviceId, writeData) 
-        { 
-        }
-
-        public DebugConsumer(string serverUrl, string appId, int requestTimeout, bool writeData = true): this(serverUrl, appId, requestTimeout, null, writeData)
+        public DebugConsumer(string serverUrl, string appId, bool writeData, string deviceId) : this(serverUrl, appId, 30000, deviceId, writeData)
         {
         }
 
-        public DebugConsumer(string serverUrl, string appId, int requestTimeout, string deviceId, bool writeData = true)
-        {
-            var relativeUri = new Uri("/data_debug", UriKind.Relative);
-            _url = new Uri(new Uri(serverUrl), relativeUri).AbsoluteUri;
-            this._appId = appId;
-            this._requestTimeout = requestTimeout;
-            this._writeData = writeData;
-            this._deviceId = deviceId;
-            TALogger.Enable = true;
-
-            _httpClient.Timeout = TimeSpan.FromMilliseconds(_requestTimeout);
-            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", "application/x-www-form-urlencoded");
-        }
-
-        public void Send(Dictionary<string, object> message)
-        {
-            try
-            {
-                var sendingData = JsonConvert.SerializeObject(message, _timeConverter);
-                TALogger.Log("send request:\n{0}", sendingData);
-                SendToServer(sendingData);
-            }
-            catch (Exception exception)
-            {
-                throw new SystemException("Failed to send message with DebugConsumer.", exception);
-            }
-        }
-
-        private async void SendToServer(string dataStr)
-        {
-            try
-            {
-                List<KeyValuePair<string, string>> paramsList = new List<KeyValuePair<string, string>>() {
-                    new KeyValuePair<string, string>("appid", _appId),
-                    new KeyValuePair<string, string>("source", "server"),
-                    new KeyValuePair<string, string>("dryRun", (_writeData ? 0 : 1).ToString()),
-                    new KeyValuePair<string, string>("data", dataStr),
-                };
-
-                if (_deviceId != null)
-                {
-                    paramsList.Add(new KeyValuePair<string, string>("deviceId", _deviceId));
-                }
-
-                var response = await _httpClient.PostAsync(_url, new FormUrlEncodedContent(paramsList));
-                var responseString = await response.Content.ReadAsStringAsync();
-                var resultJson = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseString);
-                var errorLevel = Convert.ToInt32(resultJson["errorLevel"]);
-                if (errorLevel != 0)
-                {
-                    throw new Exception("\n Can't send because :\n" + responseString);
-                }
-            }
-            catch (Exception e)
-            {
-                throw new SystemException(e + "\n Cannot post message to " + this._url);
-            }
-        }
-
-        public void Flush()
+        public DebugConsumer(string serverUrl, string appId, int requestTimeout, bool writeData = true) : this(serverUrl, appId, requestTimeout, null, writeData)
         {
         }
 
-        public void Close()
+        public DebugConsumer(string serverUrl, string appId, int requestTimeout, string deviceId, bool writeData = true) : 
+            base(serverUrl, appId, requestTimeout, deviceId, writeData)
+        {
+        }
+    }
+
+    /// <summary>
+    /// [Deprecated] Please use TDLoggerConsumer
+    /// </summary>
+    public class LoggerConsumer : TDLoggerConsumer
+    {
+        public LoggerConsumer(string logDirectory) : this(logDirectory, DefaultRotateMode, DefaultFileSize,
+            DefaultFileNamePrefix, DefaultBufferSize, DefaultBatchSec, DefaultAsync)
         {
         }
 
-        public bool IsStrict()
+        public LoggerConsumer(string logDirectory, int bufferSize, int batchSec) : this(logDirectory, DefaultRotateMode,
+            DefaultFileSize, DefaultFileNamePrefix, bufferSize, batchSec, DefaultAsync)
         {
-            return true;
+        }
+
+        public LoggerConsumer(string logDirectory, bool async) : this(logDirectory, DefaultRotateMode, DefaultFileSize,
+            DefaultFileNamePrefix, DefaultBufferSize, DefaultBatchSec, async)
+        {
+        }
+
+        public LoggerConsumer(string logDirectory, TDConfig config) : this(logDirectory, config.RotateMode,
+            config.FileSize, config.FileNamePrefix, config.BufferSize, config.BatchSec, config.Async)
+        {
+        }
+
+        public LoggerConsumer(string logDirectory, int fileSize) : this(logDirectory, DefaultRotateMode, fileSize,
+            DefaultFileNamePrefix, DefaultBufferSize, DefaultBatchSec, DefaultAsync)
+        {
+        }
+
+        public LoggerConsumer(string logDirectory, string fileNamePrefix) : this(logDirectory, DefaultRotateMode,
+            DefaultFileSize, fileNamePrefix, DefaultBufferSize, DefaultBatchSec, DefaultAsync)
+        {
+        }
+
+        public LoggerConsumer(string logDirectory, RotateMode rotateHourly) : this(logDirectory, rotateHourly,
+            DefaultFileSize, DefaultFileNamePrefix, DefaultBufferSize, DefaultBatchSec, DefaultAsync)
+        {
+        }
+
+        public LoggerConsumer(string logDirectory, RotateMode rotateHourly, int fileSize, string fileNamePrefix, int bufferSize, int batchSec, bool async)
+            : base(logDirectory, rotateHourly, fileSize, fileNamePrefix, bufferSize, batchSec, async)
+        {
         }
     }
 }

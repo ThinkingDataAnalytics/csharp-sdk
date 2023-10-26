@@ -2,7 +2,7 @@
 
 namespace ThinkingdataAnalyticsTest
 {
-    class DynamicPublicProperties : IDynamicPublicProperties
+    class DynamicPublicProperties : ITDDynamicPublicProperties
     {
         public Dictionary<string, object> GetDynamicPublicProperties()
         {
@@ -18,15 +18,13 @@ namespace ThinkingdataAnalyticsTest
     {
         static void Main()
         {
-            //TALogger.Enable = true;
+            TDLog.Enable = true;
 
-            ThinkingdataAnalytics ta = new(new LoggerConsumer("H:/log", LoggerConsumer.RotateMode.HOURLY));
+            TDAnalytics ta = new(new TDLoggerConsumer("D:/log"));
 
-            //ThinkingdataAnalytics ta = new(new BatchConsumer("serverUrl", "appId", true));
+            //TDAnalytics ta = new(new TDBatchConsumer("serverUrl", "appId", true));
 
-            //ThinkingdataAnalytics ta = new(new AsyncBatchConsumer("serverUrl", "appId", true));
-
-            //ThinkingdataAnalytics ta = new(new DebugConsumer("serverUrl", "appId", true, deviceId: "123456789"));
+            //TDAnalytics ta = new(new TDDebugConsumer("serverUrl", "appId", false, deviceId: "123456789"));
 
             ta.SetDynamicPublicProperties(new DynamicPublicProperties());
 
