@@ -269,9 +269,7 @@ namespace ThinkingData.Analytics
                 _outputStream = new FileStream(fileName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                 _fileName = fileName;
                 _refCount = 0;
-                var mutexName = "Global\\ThinkingdataAnalytics " +
-                                Path.GetFullPath(fileName).Replace('\\', '_').Replace('/', '_');
-                _mutex = new Mutex(false, mutexName);
+                _mutex = new Mutex(false);
             }
 
             public static InnerLoggerFileWriter GetInstance(string fileName)
@@ -318,14 +316,23 @@ namespace ThinkingData.Analytics
 
             public bool Write(StringBuilder data)
             {
-                lock (_outputStream)
+                bool lockToken = false;
+                try
                 {
                     _mutex.WaitOne();
-                    _outputStream.Seek(0, SeekOrigin.End);
+                    lockToken = true;
+
                     var bytes = Encoding.UTF8.GetBytes(data.ToString());
+                    _outputStream.Seek(0, SeekOrigin.End);
                     _outputStream.Write(bytes, 0, bytes.Length);
                     _outputStream.Flush();
-                    _mutex.ReleaseMutex();
+                }
+                finally
+                {
+                    if (lockToken)
+                    {
+                        _mutex.ReleaseMutex();
+                    }
                 }
 
                 return true;

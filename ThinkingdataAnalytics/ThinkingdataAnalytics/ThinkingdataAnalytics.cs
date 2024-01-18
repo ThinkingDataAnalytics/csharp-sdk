@@ -36,7 +36,7 @@ namespace ThinkingData.Analytics
     /// </summary>
     public class TDAnalytics
     {
-        public const string LibVersion = "2.0.0";
+        public const string LibVersion = "2.0.1";
         public const string LibName = "tga_csharp_sdk";
 
         private static readonly Regex KeyPattern =
@@ -395,7 +395,7 @@ namespace ThinkingData.Analytics
                 throw new SystemException("account_id or distinct_id must be provided. ");
             }
 
-            var eventProperties = new Dictionary<string, object>(properties);
+            var eventProperties = new Dictionary<string, object>(properties ?? new Dictionary<string, object>());
             if (type == "track" || type == "track_update" || type == "track_overwrite"  || type == "track_first")
             {
                 if (_dynamicPublicProperties != null)

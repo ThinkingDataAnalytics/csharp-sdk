@@ -1,3 +1,10 @@
+### v2.0.1
+**Date:** 2024/01/18
+
+**Notes:**
+
+* Use thread-level locks
+
 ### v2.0.0
 **Date:** 2023/09/21
 

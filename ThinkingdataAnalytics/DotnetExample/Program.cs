@@ -71,7 +71,7 @@ namespace ThinkingdataAnalyticsTest
             dic2.Add("group_purchase_id", 438);
             dic2.Add("group_order_is_vip", 3);
             dic2.Add("service_id", 0);
-            ta.Track(accountId, distinctId, "testEventName2", dic2);
+            ta.Track(accountId, distinctId, "testEventName2");
 
             ta.TrackFirst(accountId, distinctId, "firstEventName", "firstEventId", dic2);
             ta.TrackUpdate(accountId, distinctId, "updateEventName", "updateEventId", dic2);
