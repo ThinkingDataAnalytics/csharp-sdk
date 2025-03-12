@@ -237,7 +237,7 @@ namespace ThinkingData.Analytics
         /// </summary>
         public class TDConfig
         {
-            public int BufferSize { get; set; } = 50;
+            public int BufferSize { get; set; } = 8192;
             public int BatchSec { get; set; } = 10;
             public int FileSize { get; set; } = -1;
             public string FileNamePrefix { get; set; } = "log";
@@ -497,69 +497,67 @@ namespace ThinkingData.Analytics
 
         private async void SendToServer(string dataStr)
         {
-            try
+            byte[] dataBytes = _compress ? Gzip(dataStr) : Encoding.UTF8.GetBytes(dataStr);
+
+            var response = await _httpClient.PostAsync(_url, new ByteArrayContent(dataBytes));
+            var responseString = await response.Content.ReadAsStringAsync();
+            if (response.StatusCode != HttpStatusCode.OK)
             {
-                TDLog.Log("Send data, request: {0}", dataStr);
-
-                byte[] dataBytes = _compress ? Gzip(dataStr) : Encoding.UTF8.GetBytes(dataStr);
-
-                var response = await _httpClient.PostAsync(_url, new ByteArrayContent(dataBytes));
-                var responseString = await response.Content.ReadAsStringAsync();
-                TDLog.Log("Send data, response: {0}", responseString);
-
-                var resultJson = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseString);
-
-                if (response.StatusCode != HttpStatusCode.OK)
+                TDLog.Log("Send data failed.\nRequest data: {0}\nResponse data: {1}", dataStr, responseString);
+                if (this._throwException)
                 {
                     throw new SystemException("C# SDK send response is not 200, content: " + responseString);
                 }
+                return;
+            }
+            var resultJson = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseString);
 
-                int code = Convert.ToInt32(resultJson["code"]);
+            int code = Convert.ToInt32(resultJson["code"]);
 
-                if (code != 0)
+            if (code != 0)
+            {
+                TDLog.Log("Send data failed.\nRequest data: {0}\nResponse data: {1}", dataStr, responseString);
+                if (code == -1)
                 {
-                    if (code == -1)
+                    if (this._throwException)
                     {
-                        if (this._throwException)
-                        {
-                            throw new SystemException("error msg:" +
-                                                  (resultJson.ContainsKey("msg")
-                                                      ? resultJson["msg"]
-                                                      : "invalid data format"));
-                        }
-                    }
-                    else if (code == -2)
-                    {
-                        if (this._throwException)
-                        {
-                            throw new SystemException("error msg:" +
-                                                  (resultJson.ContainsKey("msg")
-                                                      ? resultJson["msg"]
-                                                      : "APP ID doesn't exist"));
-                        }
-                    }
-                    else if (code == -3)
-                    {
-                        if (this._throwException)
-                        {
-                            throw new SystemException("error msg:" +
-                                                  (resultJson.ContainsKey("msg")
-                                                      ? resultJson["msg"]
-                                                      : "invalid ip transmission"));
-                        }
-                    }
-                    else
-                    {
-                        if (this._throwException)
-                        {
-                            throw new SystemException("Unexpected response return code: " + code);
-                        }
+                        throw new SystemException("error msg:" +
+                                              (resultJson.ContainsKey("msg")
+                                                  ? resultJson["msg"]
+                                                  : "invalid data format"));
                     }
                 }
-            }
-            catch (Exception e)
+                else if (code == -2)
+                {
+                    if (this._throwException)
+                    {
+                        throw new SystemException("error msg:" +
+                                              (resultJson.ContainsKey("msg")
+                                                  ? resultJson["msg"]
+                                                  : "APP ID doesn't exist"));
+                    }
+                }
+                else if (code == -3)
+                {
+                    if (this._throwException)
+                    {
+                        throw new SystemException("error msg:" +
+                                              (resultJson.ContainsKey("msg")
+                                                  ? resultJson["msg"]
+                                                  : "invalid ip transmission"));
+                    }
+                }
+                else
+                {
+                    if (this._throwException)
+                    {
+                        throw new SystemException("Unexpected response return code: " + code);
+                    }
+                }
+            } 
+            else
             {
-                TDLog.Log(e + "\n  Cannot post message to " + _url);
+                TDLog.Log("Send data success.\nRequest data: {0}\nResponse data: {1}", dataStr, responseString);
             }
         }
 

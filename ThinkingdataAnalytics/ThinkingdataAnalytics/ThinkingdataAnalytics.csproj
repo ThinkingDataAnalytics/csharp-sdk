@@ -3,8 +3,28 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
 	<LangVersion>7.3</LangVersion>
-	<VersionPrefix>1.5.2</VersionPrefix>
+	<VersionPrefix>2.0.2</VersionPrefix>
+	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	<Title>Analytics SDK</Title>
+	<Authors>ThinkingData</Authors>
+	<PackageProjectUrl>https://www.thinkingdata.cn/</PackageProjectUrl>
+	<PackageReadmeFile>README.md</PackageReadmeFile>
+	<RepositoryUrl>https://github.com/ThinkingDataAnalytics/csharp-sdk</RepositoryUrl>
+	<PackageIcon></PackageIcon>
+	<PackageLicenseFile>LICENSE</PackageLicenseFile>
+	<PackageReleaseNotes>Release SDK</PackageReleaseNotes>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
