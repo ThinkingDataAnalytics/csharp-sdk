@@ -10,6 +10,7 @@ using System.Timers;
 using Newtonsoft.Json.Converters;
 using Timer = System.Timers.Timer;
 using System.Net.Http;
+using System.Globalization;
 
 namespace ThinkingData.Analytics
 {
@@ -45,7 +46,8 @@ namespace ThinkingData.Analytics
 
         private readonly IsoDateTimeConverter _timeConverter = new IsoDateTimeConverter
         {
-            DateTimeFormat = "yyyy-MM-dd HH:mm:ss.fff"
+            DateTimeFormat = "yyyy-MM-dd HH:mm:ss.fff",
+            Culture = CultureInfo.InvariantCulture
         };
 
         private readonly string _logDirectory;
@@ -352,7 +354,8 @@ namespace ThinkingData.Analytics
 
         private readonly IsoDateTimeConverter _timeConverter = new IsoDateTimeConverter
         {
-            DateTimeFormat = "yyyy-MM-dd HH:mm:ss.fff"
+            DateTimeFormat = "yyyy-MM-dd HH:mm:ss.fff",
+            Culture = CultureInfo.InvariantCulture
         };
 
         private readonly string _url;
@@ -595,8 +598,10 @@ namespace ThinkingData.Analytics
         private readonly string _deviceId;
         private readonly HttpClient _httpClient = new HttpClient();
 
-        private readonly IsoDateTimeConverter _timeConverter = new IsoDateTimeConverter
-            {DateTimeFormat = "yyyy-MM-dd HH:mm:ss.fff"};
+        private readonly IsoDateTimeConverter _timeConverter = new IsoDateTimeConverter {
+            DateTimeFormat = "yyyy-MM-dd HH:mm:ss.fff",
+            Culture = CultureInfo.InvariantCulture
+        };
 
         /// <summary>
         /// Init debug consumer
